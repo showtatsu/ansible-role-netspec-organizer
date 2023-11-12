@@ -1,0 +1,31 @@
+---
+# tasks file for ansible-role-netspec-organizer
+# settings
+- name: netspec - Build network settings (with a custom filter plugin)
+  ansible.builtin.set_fact:
+    network_settings: >-
+      {{ network_settings | netspec_organizer_build_network_settings(network_override_settings) }}
+
+# interface
+- name: netspec - reset network interfaces list
+  ansible.builtin.set_fact:
+    network_interfaces: "{{ [] }}"
+
+- name: netspec - search network interfaces
+  ansible.builtin.set_fact:
+    network_interfaces: "{{ network_interfaces + [ansible_facts[item]] }}"
+  with_items: "{{ ansible_interfaces | reject('equalto', 'lo') }}"
+
+- name: netspec - set metadata network interfaces facts
+  ansible.builtin.set_fact:
+    network_interfaces: "{{ network_interfaces | netspec_organizer_find_network_interface_metadata(network_settings) }}"
+
+# dump for debug
+- name: netspec - dump to a file
+  when: netspec_organizer_dumpfile
+  ansible.builtin.copy:
+    content: "{{ network_interfaces | to_nice_yaml }}"
+    dest: "{{ netspec_organizer_dumpfile }}"
+    owner: root
+    group: root
+    mode: 0600
