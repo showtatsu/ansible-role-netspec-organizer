@@ -1,0 +1,12 @@
+galaxy_info:
+  author: Tatsuya SHORIKI <show.tatsu.devel@gmail.com>
+  description: This role is for organizing network interfaces with ansible vars.
+  license: MIT
+  min_ansible_version: "2.9"
+
+  platforms:
+  - name: EL
+    versions:
+    - "9"
+
+dependencies: []
