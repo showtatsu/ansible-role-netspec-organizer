@@ -1,0 +1,27 @@
+name: Molecule
+on:
+  push:
+    branches:
+      - main
+      - gh-actions
+  pull_request:
+    branches:
+      - main
+jobs:
+  molecule:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+    steps:
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+      - run: pip install molecule molecule-plugins[docker]
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          path: "${{ github.repository }}"
+      - working-directory: "${{ github.repository }}"
+        env:
+          ANSIBLE_FORCE_COLOR: '1'
+        run: molecule -v test
