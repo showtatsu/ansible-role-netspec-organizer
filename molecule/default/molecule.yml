@@ -1,0 +1,53 @@
+
+dependency:
+  name: galaxy
+driver:
+  name: docker
+platforms:
+  - name: ubuntu-22.04
+    image: ubuntu:22.04
+    networks: &networks
+      - name: netspec_test_0
+      - name: netspec_test_1
+      - name: netspec_test_2
+    docker_networks: &docker_networks
+      - name: netspec_test_0
+        ipam_config:
+          - subnet: "10.0.0.0/24"
+            gateway: "10.0.0.1"
+      - name: netspec_test_1
+        ipam_config:
+          - subnet: "10.0.1.0/24"
+            gateway: "10.0.1.254"
+      - name: netspec_test_2
+        ipam_config:
+          - subnet: "10.0.2.0/24"
+            gateway: "10.0.2.254"
+
+  - name: ubuntu-20.04
+    image: ubuntu:20.04
+    networks: *networks
+    docker_networks: *docker_networks
+
+  - name: almalinux-9.2
+    image: almalinux:9.2
+    networks: *networks
+    docker_networks: *docker_networks
+
+  - name: almalinux-8.8
+    image: almalinux:8.8
+    networks: *networks
+    docker_networks: *docker_networks
+
+provisioner:
+  name: ansible
+verifier:
+  name: ansible
+scenario:
+  test_sequence:
+    - dependency
+    - syntax
+    - create
+    - converge
+    - verify
+    - destroy

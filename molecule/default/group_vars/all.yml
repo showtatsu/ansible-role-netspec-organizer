@@ -1,0 +1,77 @@
+netspec_organizer_dumpfile: /etc/netspec.yml
+
+network_settings:
+  netspec_test_common:
+    match:
+    - type: cidr
+      value: 10.0.0.0/16
+    dns_servers:
+    - "1.1.1.1"
+    dns_search:
+    - "netspec.example.com"
+
+  netspec_test_gateway1:
+    match:
+    - type: regex
+      value: ^10.0.[01].[0-9]+$
+    routes:
+    - to: 10.0.0.0/16
+      via: 1
+
+  netspec_test_gateway2:
+    match:
+    - type: regex
+      value: ^10.0.[23].[0-9]+$
+    routes:
+    - to: 10.0.0.0/16
+      via: -1
+
+  netspec_test_0:
+    match:
+    - type: cidr
+      value: 10.0.0.0/24
+    routes:
+    - to: 192.168.0.0/16
+      via: 1
+    dns_search:
+    - "netspec0.example.com"
+
+  netspec_test_1:
+    match:
+    - type: cidr
+      value: 10.0.0.0/24  ## will be override
+    routes:               ## will be override
+    - to: 192.168.0.0/16
+      via: 1
+    dns_search:           ## will be override
+    - "dummy.example.com"
+
+  netspec_test_2:
+    match:
+    - type: cidr
+      value: 10.0.2.0/24
+    routes:
+    - to: 0.0.0.0/0
+      via: 1
+    - to: 192.168.0.0/16
+      via: 1
+    dns_search:
+    - "netspec2.example.com"
+
+  netspec_test_3:
+    match:
+    - type: cidr
+      value: 10.0.3.0/24
+    dns_search:
+    - "netspec3.example.com"
+
+network_override_settings:
+  netspec_test_1:
+    match:
+    - type: cidr
+      value: 10.0.1.0/24
+    routes: []
+    dns_search:
+    - "netspec1.example.com"
+    dns_servers:
+    - 8.8.8.8

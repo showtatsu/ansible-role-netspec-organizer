@@ -1,0 +1,73 @@
+- name: Verify
+  hosts: all
+  become: true
+  gather_facts: false
+  tasks:
+  - name: Check file exists
+    ansible.builtin.stat:
+      path: /etc/netspec.yml
+    register: netspec_file
+
+  - name: Check file exists
+    ansible.builtin.assert:
+      that:
+      - netspec_file.stat.exists
+      fail_msg: "File /etc/netspec.yml does not exist"
+      success_msg: "File /etc/netspec.yml exists"
+
+  - name: Read the netspec file
+    ansible.builtin.slurp:
+      src: /etc/netspec.yml
+    register: netspec_file_content
+
+  - name: Check the netspec file
+    ansible.builtin.set_fact:
+      netspec: "{{ netspec_file_content.content | b64decode | from_yaml }}"
+
+  - name: Gather netspec about the network interfaces
+    ansible.builtin.set_fact:
+      netspec_eth0: "{{ netspec | selectattr('device', 'equalto', 'eth0') | list | first}}"
+      netspec_eth1: "{{ netspec | selectattr('device', 'equalto', 'eth1') | list | first}}"
+      netspec_eth2: "{{ netspec | selectattr('device', 'equalto', 'eth2') | list | first}}"
+
+  - name: Check file network connected
+    ansible.builtin.assert:
+      that:
+      - "{{ netspec | selectattr('device', 'equalto', 'eth0') | list | length == 1 }}"
+      - "{{ netspec | selectattr('device', 'equalto', 'eth1') | list | length == 1 }}"
+      - "{{ netspec | selectattr('device', 'equalto', 'eth2') | list | length == 1 }}"
+
+  - name: Check netspec - network_names
+    ansible.builtin.assert:
+      that:
+      - "{{ netspec_eth0.netspec.network_names | sort | join(',') == 'netspec_test_0,netspec_test_common,netspec_test_gateway1' }}"
+      - "{{ netspec_eth1.netspec.network_names | sort | join(',') == 'netspec_test_1,netspec_test_common,netspec_test_gateway1' }}"
+      - "{{ netspec_eth2.netspec.network_names | sort | join(',') == 'netspec_test_2,netspec_test_common,netspec_test_gateway2' }}"
+
+  - name: Check netspec - dns_search
+    ansible.builtin.assert:
+      that:
+      - "{{ netspec_eth0.netspec.dns_search == ['netspec.example.com', 'netspec0.example.com'] }}"
+      - "{{ netspec_eth1.netspec.dns_search == ['netspec.example.com', 'netspec1.example.com'] }}"
+      - "{{ netspec_eth2.netspec.dns_search == ['netspec.example.com', 'netspec2.example.com'] }}"
+
+  - name: Check netspec - ipv4_addresses
+    ansible.builtin.assert:
+      that:
+      - "{{ netspec_eth0.netspec.ipv4_dns_servers == ['1.1.1.1'] }}"
+      - "{{ netspec_eth1.netspec.ipv4_dns_servers == ['1.1.1.1', '8.8.8.8'] }}"
+      - "{{ netspec_eth2.netspec.ipv4_dns_servers == ['1.1.1.1'] }}"
+
+  - name: Check netspec - ipv4_default_route
+    ansible.builtin.assert:
+      that:
+      - "{{ not netspec_eth0.netspec.ipv4_default_route }}"
+      - "{{ not netspec_eth1.netspec.ipv4_default_route }}"
+      - "{{ netspec_eth2.netspec.ipv4_default_route == '10.0.2.1' }}"
+
+  - name: Check netspec - ipv4_routing_table
+    ansible.builtin.assert:
+      that:
+      - "{{ netspec_eth0.netspec.ipv4_routing_table | length == 2 }}"
+      - "{{ netspec_eth1.netspec.ipv4_routing_table | length == 1 }}"
+      - "{{ netspec_eth2.netspec.ipv4_routing_table | length == 3 }}"

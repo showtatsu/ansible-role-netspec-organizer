@@ -1,0 +1,11 @@
+# テスト用ターゲットサーバにAnsibleで構成ファイルを配布します。
+- name: Converge
+  hosts: all
+  gather_facts: true
+  tasks:
+    # リポジトリのルートがAnsible Role になっている場合、
+    # そのRoleを読み込んで適用します。
+    - name: "Include role"
+      ansible.builtin.include_role:
+        name: "../../.."
+
