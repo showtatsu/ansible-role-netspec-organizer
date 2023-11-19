@@ -1,4 +1,6 @@
 galaxy_info:
+  namespace: showtatsu
+  role_name: netspec_organizer
   author: Tatsuya SHORIKI <show.tatsu.devel@gmail.com>
   description: This role is for organizing network interfaces with ansible vars.
   license: MIT
@@ -7,6 +9,11 @@ galaxy_info:
   platforms:
   - name: EL
     versions:
+    - "8"
     - "9"
+  - name: Ubuntu
+    versions:
+    - "jammy"  # 22.04
+    - "focal"  # 20.04
 
 dependencies: []
