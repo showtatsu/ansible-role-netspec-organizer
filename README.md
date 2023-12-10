@@ -4,9 +4,9 @@
 Ansible変数に記載したメタデータを検索し、マッチングを行い、
 Ansible Factを更新する機能を提供するAnsible Roleです。
 
-このRole自体にはホストの設定を更新する機能はほぼありません。
+このRole自体にはターゲットホストの設定を更新する機能はありません。
 
-このRoleから設定される `network_interfaces` 変数を参考にして、
+このRoleから設定される `netspec` 変数を参考にして、
 他のRoleでタスクを抽象化させることができます。
 
 ## Roleの目的
@@ -22,20 +22,20 @@ Ansibleで、ホストのネットワーク情報に応じて動的に設定を�
 - `10.10.0.0/16`の範囲のIPアドレスを持つNICがいた場合、そのNICの所属するネットワークアドレスの先頭にあるGatewayに向けて`10.0.0.0/16`向けのルーティングテーブルを記載する
 - `192.168.10.0/24`のネットワークに接続されたNICのIPアドレスにSSHDをBindする
 
-他のRoleを開発するときに、これらの要件を比較的容易に達成できるようにするのがこのRoleの役割です。
+他のRoleを開発するときに、これらの要件を比較的容易に達成できるようにするのがこのRoleの目的です。
 
 
 # Role変数
 
-`network_settings`および`network_override_settings`を使用して
+`netspec_settings`および`netspec_override_settings`を使用して
 ホストが接続されている周辺ネットワークの情報をRoleに提供してください。
 
-その状態でRoleが読み込まれると、`network_interfaces`という名前の変数が設定されます。
+その状態でRoleが読み込まれると、`netspec_interfaces`という名前の変数が設定されます。
 
-### `network_settings` 設定値のサンプル
+### `netspec_settings` 設定値のサンプル
 
 ```
-network_settings:
+netspec_settings:
   network_1:
     match:
     - type: cidr
@@ -54,10 +54,10 @@ network_settings:
 
 ## 設定値の説明
 
-`network_settings` は、ネットワークに名前をつけて設定管理するための設定値で、
+`netspec_settings` は、ネットワークに名前をつけて設定管理するための設定値で、
 このRoleにおいて最も重要な変数です。
 
-### network_settings.<ネットワーク名>
+### netspec_settings.<ネットワーク名>
 
 辞書型データでネットワークの情報を記載します。
 ここに定義したネットワークに対して、各Interfaceが接続されているかどうかを、
@@ -135,25 +135,25 @@ InterfaceのIpアドレスを元に判定することになります。
     - "example.com"
 ```
 
-### network_override_settings
+### netspec_override_settings
 
-`network_override_settings` は、`network_settings`の設定値の一部を変更するための変数です。
+`netspec_override_settings` は、`netspec_settings`の設定値の一部を変更するための変数です。
 
-他のRoleに組み込まれる際、Role側で`network_settings`を用いてデフォルトの設定値を提供しつつ、
+他のRoleに組み込まれる際、Role側で`netspec_settings`を用いてデフォルトの設定値を提供しつつ、
 細かい調整をRoleの利用者に行わせる場合に利用できます。
 
-`network_override_settings`の書式は`network_settings`と同じですが、
-`network_settings`の値とマージされる前提ですのでそれ自体に必須項目がありません。
+`netspec_override_settings`の書式は`netspec_settings`と同じですが、
+`netspec_settings`の値とマージされる前提ですのでそれ自体に必須項目がありません。
 
-`network_override_settings` から `network_settings` に対して定義がマージされる際のルールは下記の通りです。
+`netspec_override_settings` から `netspec_settings` に対して定義がマージされる際のルールは下記の通りです。
 
-- `network_settings`に対象のネットワーク自体が定義されていない場合は追加されます
-- `network_settings`に対象のネットワークが定義されている場合、ネットワーク定義直下のキーでシャローコピーされます
-    - `network_settings`側のネットワークに存在しないキーは追加されます
-    - `network_settings`側のネットワークに存在するキーは置き換えられます
+- `netspec_settings`に対象のネットワーク自体が定義されていない場合は追加されます
+- `netspec_settings`に対象のネットワークが定義されている場合、ネットワーク定義直下のキーでシャローコピーされます
+    - `netspec_settings`側のネットワークに存在しないキーは追加されます
+    - `netspec_settings`側のネットワークに存在するキーは置き換えられます
 
 ```yaml
-network_settings:
+netspec_settings:
   sample_net:
     match:
     - type: cidr
@@ -164,7 +164,7 @@ network_settings:
     dns_servers:
     - "8.8.8.8"
 
-network_override_settings:
+netspec_override_settings:
   sample_net:
     routes:
     - to: 192.168.0.0/16
@@ -189,7 +189,7 @@ network_override_settings:
 これらの値がマージされ、下記の定義がされたものとして処理されます。
 
 ```yaml
-network_settings:
+netspec_settings:
   sample_net:
     match:  # <-- overrideに定義されていないキーは維持されます
     - type: cidr
@@ -219,13 +219,13 @@ network_settings:
 
 ## 追加されるFact値の説明
 
-`network_interfaces`が追加されます。
+`netspec_interfaces`が追加されます。
 
-これは、ホストが持つネットワークインターフェース情報（`lo`を除く）に、`network_settings`で定義したメタデータを追加したものです。
+これは、ホストが持つネットワークインターフェース情報（`lo`を除く）に、`netspec_settings`で定義したメタデータを追加したものです。
 配列構造となっており、`ansible_interfaces`の値をコピーしたものに`netspec`のキーが追加され、
 そこにマッチしたネットワークの情報を元にしたメタデータが設定されています。
 
-## network_interfaces[].netspec
+## netspec_interfaces[].netspec
 
 ネットワークインターフェースごとに、マッチしたネットワークの情報が`netspec`のエントリに追加されています。
 
@@ -239,10 +239,10 @@ network_settings:
 このNICに設定すべきルーティング情報の一覧が取得できます。
 
 
-## `network_interfaces`に設定される変数のサンプル
+## `netspec_interfaces`に設定される変数のサンプル
 
 ```
-"network_interfaces": [
+"netspec_interfaces": [
   {
       **<ここにansible_interfacesの項目>,
       "netspec": {

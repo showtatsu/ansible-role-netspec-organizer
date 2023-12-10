@@ -163,7 +163,7 @@ class NmAnsibleNetworkInterfaceFact():
 
 class NmNetworkRouteEntry():
     """ NmNetworkRouteEntry クラスは、
-    "network_settings"の中の "routes" 及び "extra_routes" に対するデータモデルです。
+    "netspec_settings"の中の "routes" 及び "extra_routes" に対するデータモデルです。
     """
 
     def __init__(self, route: dict) -> None:
@@ -243,7 +243,7 @@ class NmNetworkRouteEntry():
 
 class NmNetworkResolvedRouteEntry(NmNetworkRouteEntry):
     """ NmNetworkResolvedRouteEntry クラスは、
-    "network_settings"の中の "routes" 及び "extra_routes" に対するデータモデルです。
+    "netspec_settings"の中の "routes" 及び "extra_routes" に対するデータモデルです。
     """
     def __init__(self, route: dict, address_fact: NmAnsibleNetworkAddressFact) -> None:
         super().__init__(route)
@@ -258,7 +258,7 @@ class NmNetworkResolvedRouteEntry(NmNetworkRouteEntry):
 
     # override
     @property
-    def via(self) -> str | int:
+    def via(self) -> typing.Union[str, int]:
         return str(self.gateway)
 
     @property
@@ -279,7 +279,7 @@ class NmNetworkResolvedRouteEntry(NmNetworkRouteEntry):
 
 class NmNetworkMatchRule():
     """ NmNetworkMatchRule クラスは、
-    "network_settings"の中の "match" に対するデータモデルです。
+    "netspec_settings"の中の "match" に対するデータモデルです。
     インターフェースが持つアドレスとNetworkSettingEntryのマッチングを行うための情報です。
     "type"の値によりマッチ方法が異なり、実際の実装は"type"に応じた拡張クラスで行われます。
     """
@@ -381,7 +381,7 @@ class NmNetworkMatchRuleByRegex(NmNetworkMatchRule):
 
 class NetworkSettingEntry():
     """ NetworkSettingEntry クラスは、
-    "network_settings"の中のエントリに対するデータモデルです。
+    "netspec_settings"の中のエントリに対するデータモデルです。
     """
 
     def __init__(self, name: str, network_setting: dict) -> None:
@@ -498,22 +498,22 @@ class NetSpec():
     
     def __init__(self,
                  interface: NmAnsibleNetworkInterfaceFact,
-                 network_settings: dict[str, NetworkSettingEntry],
+                 netspec_settings: dict[str, NetworkSettingEntry],
                  ) -> None:
         self._interface = interface
-        self._network_settings = network_settings
+        self._netspec_settings = netspec_settings
 
     @property
     def interface(self) -> NmAnsibleNetworkInterfaceFact:
         return self._interface
 
     @property
-    def network_settings(self) -> dict[str, NetworkSettingEntry]:
-        return self._network_settings
+    def netspec_settings(self) -> dict[str, NetworkSettingEntry]:
+        return self._netspec_settings
 
     @property
     def network_names(self) -> list[str]:
-        return list(self.network_settings.keys())
+        return list(self.netspec_settings.keys())
 
     @property
     def ipv4_routing_table(self) -> list[NmNetworkResolvedRouteEntry]:
@@ -554,14 +554,14 @@ class NetSpec():
     @property
     def dns_search(self) -> list[str]:
         dns_search = []
-        for setting in self.network_settings.values():
+        for setting in self.netspec_settings.values():
             if setting.dns_search:
                 dns_search += setting.dns_search
         return dns_search
 
     def get_routing_table(self, version: typing.Optional[int] = None) -> list[NmNetworkResolvedRouteEntry]:
         routes = []
-        for nw_name, nw_info in self.network_settings.items():
+        for nw_name, nw_info in self.netspec_settings.items():
             if nw_info.routes:
                 routes += nw_info.routes
             if nw_info.extra_routes:
@@ -574,7 +574,7 @@ class NetSpec():
 
     def get_dns_servers(self) -> list[ipaddress._IPAddressBase]:
         dns_servers = []
-        for setting in self.network_settings.values():
+        for setting in self.netspec_settings.values():
             if setting.dns_servers:
                 dns_servers += setting.dns_servers
         return dns_servers
@@ -601,56 +601,56 @@ class NetSpec():
         }
 
 
-def netspec_organizer_build_network_settings(network_settings: dict, network_override_settings: dict = {}) -> dict:
-    """ この関数は、"network_settings" と "network_override_settings" から、
+def netspec_organizer_build_netspec_settings(netspec_settings: dict, netspec_override_settings: dict = {}) -> dict:
+    """ この関数は、"netspec_settings" と "netspec_override_settings" から、
     ネットワーク設定の情報を生成します。
     AnsibleのTaskから、下記のように呼び出されるFilterとして利用されます。
     
         ```yaml
         - name: netspec - Build network settings (with a custom filter plugin)
           ansible.builtin.set_fact:
-            network_settings: >-
-                {{ network_settings | netspec_organizer_build_network_settings(network_override_settings) }}
+            netspec_settings: >-
+                {{ netspec_settings | netspec_organizer_build_netspec_settings(netspec_override_settings) }}
         ```
     """
-    if not isinstance(network_settings, dict):
+    if not isinstance(netspec_settings, dict):
         raise AnsibleError(
-            f'Invalid attribute, "network_settings" is not dict.')
-    if not isinstance(network_override_settings, dict):
+            f'Invalid attribute, "netspec_settings" is not dict.')
+    if not isinstance(netspec_override_settings, dict):
         raise AnsibleError(
-            f'Invalid attribute, "network_override_settings" is not dict.')
-    for name, properties in network_override_settings.items():
+            f'Invalid attribute, "netspec_override_settings" is not dict.')
+    for name, properties in netspec_override_settings.items():
         name: str
         properties: dict
-        if network_settings.get(name):
-            network_settings[name].update(**properties)
+        if netspec_settings.get(name):
+            netspec_settings[name].update(**properties)
         else:
-            network_settings[name] = properties
-    return network_settings
+            netspec_settings[name] = properties
+    return netspec_settings
 
 
-def netspec_organizer_find_network_interface_metadata(network_interfaces: list[dict], network_settings: dict[str, dict]) -> list[dict]:
-    """ この関数は、Ansible Factが収集したネットワークインターフェースの一覧と"network_settings" を元に、
+def netspec_organizer_find_network_interface_metadata(netspec_interfaces: list[dict], netspec_settings: dict[str, dict]) -> list[dict]:
+    """ この関数は、Ansible Factが収集したネットワークインターフェースの一覧と"netspec_settings" を元に、
     インターフェースが所属するネットワークの対応付けを行い、"ansible_interfaces"側に情報を付加します。
     AnsibleのTaskから、下記のように呼び出されるFilterとして利用されます。
     
         ```yaml
         - name: netspec - search network interfaces
           ansible.builtin.set_fact:
-            network_interfaces: "{{ (network_interfaces | default([])) + [ansible_facts[item]] }}"
+            netspec_interfaces: "{{ (netspec_interfaces | default([])) + [ansible_facts[item]] }}"
           with_items: "{{ ansible_interfaces | reject('equalto', 'lo') }}"
 
         - name: netspec - Find network interface metadata (with a custom filter plugin)
           ansible.builtin.set_fact:
-            network_interfaces: >-
-                {{ network_interfaces | netspec_organizer_find_network_interface_metadata(network_settings) }}
+            netspec_interfaces: >-
+                {{ netspec_interfaces | netspec_organizer_find_network_interface_metadata(netspec_settings) }}
         ```
     """
-    settings = { k: NetworkSettingEntry(k, v) for k, v in network_settings.items() }
-    for interface_info in network_interfaces:
+    settings = { k: NetworkSettingEntry(k, v) for k, v in netspec_settings.items() }
+    for interface_info in netspec_interfaces:
         # Ansible Spec が収集したネットワークインターフェイス一つ分の情報をデータモデルに変換します。
         interface_fact = NmAnsibleNetworkInterfaceFact(interface_info)
-        binded_network_settings: dict[str, NetworkSettingEntry] = {}
+        binded_netspec_settings: dict[str, NetworkSettingEntry] = {}
         # インターフェースが持つ全てのIPアドレス情報を順に評価します。
         for address_fact in interface_fact.all_ip_addresses:
             # 定義されたネットワーク設定の中から、アドレス情報にマッチするものを探します。
@@ -658,27 +658,27 @@ def netspec_organizer_find_network_interface_metadata(network_interfaces: list[d
                 if nw_info.is_matched(address_fact.address):
                     # マッチしたネットワーク設定を元に、
                     # インターフェースのアドレス情報にバインドされた設定を生成します。
-                    binded_network_settings[nw_name] = nw_info.clone_and_bind(address_fact)
+                    binded_netspec_settings[nw_name] = nw_info.clone_and_bind(address_fact)
         # 最終的にネットワークインターフェースに付与する情報を生成します。
-        netspec = NetSpec(interface_fact, binded_network_settings)
+        netspec = NetSpec(interface_fact, binded_netspec_settings)
         interface_info['netspec'] = netspec.serialize()
     # 入力で受け取ったインターフェース配列を元に、各インターフェースに "netspec" を付与した配列を返します。
-    return network_interfaces
+    return netspec_interfaces
 
 
-def netspec_find_interfaces(network_interfaces: list[dict], network_name: str) -> list[dict]:
-    """ この関数は、netspec-organizerが収集した "network_interfaces" から、
+def netspec_find_interfaces(netspec_interfaces: list[dict], network_name: str) -> list[dict]:
+    """ この関数は、netspec-organizerが収集した "netspec_interfaces" から、
         対象のネットワーク名にマッチするインターフェースの一覧を返します。
     """
     results = []
-    for network_interface in network_interfaces:
-        if network_interface.get('netspec'):
-            netspec = network_interface['netspec']
+    for netspec_interface in netspec_interfaces:
+        if netspec_interface.get('netspec'):
+            netspec = netspec_interface['netspec']
             if network_name in netspec['network_names']:
-                results.append(network_interface)
+                results.append(netspec_interface)
         else:
             raise AnsibleError(
-                f'Invalid attribute, "netspec" is not exist in a network interface "{network_interface}".') 
+                f'Invalid attribute, "netspec" is not exist in a network interface "{netspec_interface}".') 
     return results
 
 
@@ -686,7 +686,7 @@ class FilterModule(object):
 
   def filters(self):
     return {
-        'netspec_organizer_build_network_settings': netspec_organizer_build_network_settings,
+        'netspec_organizer_build_netspec_settings': netspec_organizer_build_netspec_settings,
         'netspec_organizer_find_network_interface_metadata': netspec_organizer_find_network_interface_metadata,
         'netspec_find_interfaces': netspec_find_interfaces,
     }

@@ -3,28 +3,28 @@
 # settings
 - name: netspec - Build network settings (with a custom filter plugin)
   ansible.builtin.set_fact:
-    network_settings: >-
-      {{ network_settings | netspec_organizer_build_network_settings(network_override_settings) }}
+    netspec_settings: >-
+      {{ netspec_settings | netspec_organizer_build_netspec_settings(netspec_override_settings) }}
 
 # interface
 - name: netspec - reset network interfaces list
   ansible.builtin.set_fact:
-    network_interfaces: "{{ [] }}"
+    netspec_interfaces: "{{ [] }}"
 
 - name: netspec - search network interfaces
   ansible.builtin.set_fact:
-    network_interfaces: "{{ network_interfaces + [ansible_facts[item]] }}"
+    netspec_interfaces: "{{ netspec_interfaces + [ansible_facts[item]] }}"
   with_items: "{{ ansible_interfaces | reject('equalto', 'lo') }}"
 
 - name: netspec - set metadata network interfaces facts
   ansible.builtin.set_fact:
-    network_interfaces: "{{ network_interfaces | netspec_organizer_find_network_interface_metadata(network_settings) }}"
+    netspec_interfaces: "{{ netspec_interfaces | netspec_organizer_find_network_interface_metadata(netspec_settings) }}"
 
 # dump for debug
 - name: netspec - dump to a file
   when: netspec_organizer_dumpfile
   ansible.builtin.copy:
-    content: "{{ network_interfaces | to_nice_yaml }}"
+    content: "{{ netspec_interfaces | to_nice_yaml }}"
     dest: "{{ netspec_organizer_dumpfile }}"
     owner: root
     group: root

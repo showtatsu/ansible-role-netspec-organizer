@@ -1,6 +1,6 @@
 netspec_organizer_dumpfile: /etc/netspec.yml
 
-network_settings:
+netspec_settings:
   netspec_test_common:
     match:
     - type: cidr
@@ -65,7 +65,7 @@ network_settings:
     dns_search:
     - "netspec3.example.com"
 
-network_override_settings:
+netspec_override_settings:
   netspec_test_1:
     match:
     - type: cidr
